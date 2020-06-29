@@ -14,14 +14,13 @@ module Board =
     let rows = [0..7]
     let cols = rows
     let private index x y = y * size + x
-    let private allDirections = [1,1; 
-        1,0; 
-        1,-1; 
-        0,-1;
-        -1,-1;
-        -1,0;
-        -1,1;
-        0,1]
+    let private allDirections = [1,1; 1,0; 1,-1; 0,-1; -1,-1; -1,0; -1,1; 0,1]
+
+    [<Struct>]
+    type Board(array:array<Option<Color>>) =
+
+        member internal __.set (x,y) color =
+            array.[index x y] = color
 
     /// Create a board in inital state
     let create () = 
@@ -35,7 +34,6 @@ module Board =
                     | 4,4 -> Some White
                     | _ -> None|]
 
-    
     let get (x, y) (board :array<Option<Color>>) = 
         board.[index x y]
     
@@ -127,7 +125,6 @@ module Console =
         parseIndex "abcdefgh" line
 
     let rec getUserInput color board =
-        print board
         printfn "\nPlease enter location for %As next move: " (colorToChar (Some color))
         let parseResult =
             readRow()
@@ -145,6 +142,25 @@ module Console =
             end
 
 
+type IPlayer = 
+    abstract GetMove : array<option<Board.Color>> -> int*int
+    abstract Color : Board.Color
+
+type ConsolePlayer (color : Board.Color) =
+    interface IPlayer with
+        member __.GetMove board =
+            Console.getUserInput color board
+        member __.Color = color
+
+type RandomPlayer (color : Board.Color) =
+    let random = Random()
+
+    interface IPlayer with
+        member __.GetMove board =
+            let moves = Board.getValidMoves color board |> Seq.toArray
+            moves.[random.Next(0, moves.Length-1)]
+        member __.Color = color
+
 let showGameResults board =
     printfn "GAME OVER"
     let allpos = Seq.allPairs Board.rows Board.cols
@@ -158,19 +174,33 @@ let showGameResults board =
     let winner = if (w > b) then Board.White else Board.Black
     printfn "WINNER is %A" (Console.colorToChar (Some winner))
 
-let rec gameLoop board color =
-    if (Seq.isEmpty (Board.getValidMoves color board)) then
+let rec gameLoop board (player:IPlayer) (otherPlayer:IPlayer) =
+    if (Seq.isEmpty (Board.getValidMoves player.Color board)) then
         showGameResults board
     else
         begin
-            let move = Console.getUserInput color board
-            let newBoard = Board.move move color board
-            gameLoop newBoard (Board.flipColor color)
+            Console.print board 
+            let move = player.GetMove board
+            let newBoard = Board.move move player.Color board
+            gameLoop newBoard otherPlayer player
         end
+
+let rec createPlaryer color =
+    printfn "Choose player type for %c" (Console.colorToChar (Some color))
+    printfn "1: Human"
+    printfn "2: Computer - Random"
+    printfn ""
+    
+    match (Int32.TryParse (Console.ReadLine().Trim())) with
+    | (true, 1) -> new ConsolePlayer(color) :> IPlayer
+    | (true, 2) -> new RandomPlayer(color) :> IPlayer
+    | _ -> createPlaryer color
 
 [<EntryPoint>]
 let main argv =
     printfn "Hello World from F#!"
     let board = Board.create()
-    gameLoop board Board.White
+    let player1 = createPlaryer Board.White
+    let player2 = createPlaryer Board.Black
+    gameLoop board player1 player2 
     0 // return an integer exit code

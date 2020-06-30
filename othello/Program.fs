@@ -127,8 +127,8 @@ module Console =
     let rec getUserInput color board =
         printfn "\nPlease enter location for %As next move: " (colorToChar (Some color))
         let parseResult =
-            readRow()
-            |> Result.bind (fun y -> readColumn() |> Result.map (fun x -> (x,y)))
+            readColumn()
+            |> Result.bind (fun x -> readRow() |> Result.map (fun y -> (x,y)))
             |> Result.bind (fun pos -> 
                 if (Board.isValid pos color board) then Ok pos
                 else Error (sprintf "Cannot place marker at %A" pos))
@@ -138,6 +138,8 @@ module Console =
         | Error error -> 
             begin
                 printfn "\nInvalid input: [%s]\n" error
+                print board
+                printfn ""
                 getUserInput color board
             end
 
@@ -162,7 +164,9 @@ type RandomPlayer (color : Board.Color) =
         member __.Color = color
 
 let showGameResults board =
-    printfn "GAME OVER"
+    printfn " -- END OF GAME -- "
+    Console.print board
+    printfn ""
     let allpos = Seq.allPairs Board.rows Board.cols
     let (w, b) = Seq.fold (fun (numWhite, numBlack) (x,y) -> 
                     match Board.get (x,y) board with
@@ -179,7 +183,7 @@ let rec gameLoop board (player:IPlayer) (otherPlayer:IPlayer) =
         showGameResults board
     else
         begin
-            Console.print board 
+            Console.print board
             let move = player.GetMove board
             let newBoard = Board.move move player.Color board
             gameLoop newBoard otherPlayer player

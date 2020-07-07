@@ -4,7 +4,8 @@ open System
 
 module Board =
     type Color = White | Black
-    
+    type State = array<Option<Color>>
+
     let flipColor color = 
         match color with 
         | White -> Black
@@ -17,7 +18,7 @@ module Board =
     let private allDirections = [1,1; 1,0; 1,-1; 0,-1; -1,-1; -1,0; -1,1; 0,1]
 
     [<Struct>]
-    type Board(array:array<Option<Color>>) =
+    type Board(array:State) =
 
         member internal __.set (x,y) color =
             array.[index x y] = color
@@ -34,10 +35,10 @@ module Board =
                     | 4,4 -> Some White
                     | _ -> None|]
 
-    let get (x, y) (board :array<Option<Color>>) = 
+    let get (x, y) (board :State) = 
         board.[index x y]
     
-    let private set (x, y) color (board :array<Option<Color>>) = 
+    let private set (x, y) color (board :State) = 
         board.[index x y] <- Some color
         board
 
@@ -96,7 +97,7 @@ module Console =
         | Some Board.White -> 'X'
         | Some Board.Black -> 'O'
 
-    let print (board:array<option<Board.Color>>) =
+    let print (board:Board.State) =
         printfn "   |a|b|c|d|e|f|g|h|"
         for y in Board.rows do
         begin
@@ -145,7 +146,7 @@ module Console =
 
 
 type IPlayer = 
-    abstract GetMove : array<option<Board.Color>> -> int*int
+    abstract GetMove : Board.State -> int*int
     abstract Color : Board.Color
 
 type ConsolePlayer (color : Board.Color) =
@@ -196,8 +197,8 @@ let rec createPlaryer color =
     printfn ""
     
     match (Int32.TryParse (Console.ReadLine().Trim())) with
-    | (true, 1) -> new ConsolePlayer(color) :> IPlayer
-    | (true, 2) -> new RandomPlayer(color) :> IPlayer
+    | (true, 1) -> ConsolePlayer(color) :> IPlayer
+    | (true, 2) -> RandomPlayer(color) :> IPlayer
     | _ -> createPlaryer color
 
 [<EntryPoint>]

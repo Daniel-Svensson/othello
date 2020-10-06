@@ -1,5 +1,7 @@
 ﻿// Learn more about F# at http://fsharp.org
 
+namespace Othello
+
 open System
 
 module Board =
@@ -42,7 +44,7 @@ module Board =
         board.[index x y] <- Some color
         board
 
-    let copy board = Array.copy board
+    let copy (board:State) = Array.copy board
 
     let private countFlips (x, y) (dx, dy) (color:Color) board =
         let rec countFlipsImpl (x, y) count =
@@ -88,124 +90,25 @@ module Board =
         )
         set (x,y) color newboard
 
+module Scoring =
+    let scoreDifference board color =
+        Seq.allPairs Board.rows Board.cols
+        |> Seq.sumBy (fun (x,y) -> 
+            match Board.get (x,y) board with
+            | Some c when c = color -> 1
+            | Some _-> -1
+            | None -> 0)
 
-module Console =
-
-    let colorToChar color =
-        match color with
-        | None -> ' '
-        | Some Board.White -> 'X'
-        | Some Board.Black -> 'O'
-
-    let print (board:Board.State) =
-        printfn "   |a|b|c|d|e|f|g|h|"
-        for y in Board.rows do
-        begin
-            printf "%d: " y
-            for x in Board.cols do
-                printf "|%c" (colorToChar (Board.get (x,y) board))
-            printfn "|"
-        end
-
-    let private parseIndex (validCharacters:string) (char:string) =
-        let index = validCharacters.IndexOf(char, StringComparison.OrdinalIgnoreCase)
-        if index <> -1 then Ok index
-        else Error "Invalid column enter a single character a-h"
-
-    let private readRow() =
-        printf "Row (0-7): "
-        let line = Console.ReadLine().Trim()
-        match Int32.TryParse line with
-        | (true, value) when value >= 0 && value <= 7 -> Ok value
-        | (true, _) -> Error "Value must be between 0 and 7 inclusive"
-        | (false, _) -> Error "Row must be a number"
-
-    let private readColumn() =
-        printf "Column (a-h): "
-        let line = Console.ReadLine().Trim()
-        parseIndex "abcdefgh" line
-
-    let rec getUserInput color board =
-        printfn "\nPlease enter location for %As next move: " (colorToChar (Some color))
-        let parseResult =
-            readColumn()
-            |> Result.bind (fun x -> readRow() |> Result.map (fun y -> (x,y)))
-            |> Result.bind (fun pos -> 
-                if (Board.isValid pos color board) then Ok pos
-                else Error (sprintf "Cannot place marker at %A" pos))
-
-        match parseResult with
-        | Ok pos -> pos
-        | Error error -> 
-            begin
-                printfn "\nInvalid input: [%s]\n" error
-                print board
-                printfn ""
-                getUserInput color board
-            end
-
-
-type IPlayer = 
-    abstract GetMove : Board.State -> int*int
-    abstract Color : Board.Color
-
-type ConsolePlayer (color : Board.Color) =
-    interface IPlayer with
-        member __.GetMove board =
-            Console.getUserInput color board
-        member __.Color = color
-
-type RandomPlayer (color : Board.Color) =
-    let random = Random()
-
-    interface IPlayer with
-        member __.GetMove board =
+module AI =
+    let random() =
+        let random = Random()
+        (fun color board -> 
             let moves = Board.getValidMoves color board |> Seq.toArray
-            moves.[random.Next(0, moves.Length-1)]
-        member __.Color = color
+            moves.[random.Next(0, moves.Length-1)])
 
-let showGameResults board =
-    printfn " -- END OF GAME -- "
-    Console.print board
-    printfn ""
-    let allpos = Seq.allPairs Board.rows Board.cols
-    let (w, b) = Seq.fold (fun (numWhite, numBlack) (x,y) -> 
-                    match Board.get (x,y) board with
-                    | Some Board.White -> (numWhite+1, numBlack)
-                    | Some Board.Black -> (numWhite, numBlack+1)
-                    | None -> (numWhite, numBlack)
-                    ) (0,0) allpos
-    printfn "SCORE:\n 'X': %d  <-> 'O': %d" w b
-    let winner = if (w > b) then Board.White else Board.Black
-    printfn "WINNER is %A" (Console.colorToChar (Some winner))
+    /// Pick move giving player the largest scoring giving a scoring method
+    let greedy score =
+        (fun color board -> 
+            Board.getValidMoves color board
+            |> Seq.maxBy (fun x -> score board color))
 
-let rec gameLoop board (player:IPlayer) (otherPlayer:IPlayer) =
-    if (Seq.isEmpty (Board.getValidMoves player.Color board)) then
-        showGameResults board
-    else
-        begin
-            Console.print board
-            let move = player.GetMove board
-            let newBoard = Board.move move player.Color board
-            gameLoop newBoard otherPlayer player
-        end
-
-let rec createPlaryer color =
-    printfn "Choose player type for %c" (Console.colorToChar (Some color))
-    printfn "1: Human"
-    printfn "2: Computer - Random"
-    printfn ""
-    
-    match (Int32.TryParse (Console.ReadLine().Trim())) with
-    | (true, 1) -> ConsolePlayer(color) :> IPlayer
-    | (true, 2) -> RandomPlayer(color) :> IPlayer
-    | _ -> createPlaryer color
-
-[<EntryPoint>]
-let main argv =
-    printfn "Hello World from F#!"
-    let board = Board.create()
-    let player1 = createPlaryer Board.White
-    let player2 = createPlaryer Board.Black
-    gameLoop board player1 player2 
-    0 // return an integer exit code

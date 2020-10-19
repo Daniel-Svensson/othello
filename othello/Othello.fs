@@ -116,33 +116,32 @@ module Board =
 
 module Scoring =
     let private lateScoreBoard =
-        [| 20; -10; 5; 3; 3; 5; -10;  20;
+        [| 50; -10; 5; 3; 3; 5; -10;  50;
           -10;  -8; 3; 1; 1; 3;  -8; -10;
             5;   3; 2; 1; 1; 2;   3;   5;
             3;   1; 1; 1; 1; 1;   1;   3;
             3;   1; 1; 1; 1; 1;   1;   3;
             5;   3; 2; 1; 1; 2;   3;   5;
           -10;  -8; 3; 1; 1; 3;  -8; -10;
-           20; -10; 5; 3; 3; 5; -10;  20 |]
+           50; -10; 5; 3; 3; 5; -10;  50 |]
 
     let private earlyScoreBoard =
-        [| 20; -10;  5;  1;  1;  5; -10;  20;
+        [| 50; -10;  5;  1;  1;  5; -10;  50;
           -10;  -8;  3; -1; -1;  3;  -8; -10;
             5;   3;  2; -1; -1;  2;   3;   5;
             1;  -1; -1; -1; -1; -1;  -1;   1;
             1;  -1; -1; -1; -1; -1;  -1;   1;
             5;   3;  2; -1; -1;  2;   3;   5;
           -10;  -8;  3; -1; -1;  3;  -8; -10;
-           20; -10;  5;  1;  1;  5; -10;  20 |]
+           50; -10;  5;  1;  1;  5; -10;  50 |]
 
     /// Returns the differnce in number of moves the players can do
     let moveDifference board color = 
         let otherColor = Board.flipColor color
         Board.foldPositions (fun acc pos -> 
-            if Board.isMoveValid pos color board then +1
-            else if Board.isMoveValid pos otherColor board then -1
-            else 0) 0
-
+            if Board.isMoveValid pos color board then acc + 1
+            else if Board.isMoveValid pos otherColor board then acc - 1
+            else acc) 0
 
     let scoreDifference board color =
         Board.sumBy (fun cell ->
@@ -177,7 +176,7 @@ module Scoring =
     // Combine scoring functions f1 and f2 using weights 
     let combine w1 f1 w2 f2 =
         (fun (board:Board.State) (color:Board.Color) ->
-            w1 * (f1 board color) + w2 * (f2 board color))
+            (w1 * (f1 board color)) + (w2 * (f2 board color)))
 
 module AI =
     let random () =

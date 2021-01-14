@@ -27,8 +27,8 @@ type Model =
         signedInAs: option<string>
         signInFailed: bool
 
-        board: Program.Board.State
-        player : Program.Board.Color
+        board: Othello.Board.State
+        player : Othello.Board.Color
     }
 
 and Book =
@@ -49,8 +49,8 @@ let initModel =
         password = ""
         signedInAs = None
         signInFailed = false
-        board = Program.Board.create()
-        player = Program.Board.Color.White
+        board = Othello.Board.create()
+        player = Othello.Board.Color.White
     }
 
 /// Remote service definition.
@@ -115,7 +115,7 @@ let update remote message model =
         { model with counter = value }, Cmd.none
 
     | GetBooks ->
-        let cmd = Cmd.ofAsync remote.getBooks () GotBooks Error
+        let cmd = Cmd.OfAsync.either remote.getBooks () GotBooks Error
         { model with books = None }, cmd
     | GotBooks books ->
         { model with books = Some books }, Cmd.none
@@ -137,7 +137,7 @@ let update remote message model =
     | RecvSignOut ->
         { model with signedInAs = None; signInFailed = false }, Cmd.none
     | MakeMove (x,y) as pos ->
-        {model with board = (Program.Board.move (x,y) model.player model.board); player = Program.Board.flipColor model.player}, Cmd.none
+        {model with board = (Othello.Board.move (x,y) model.player model.board); player = Othello.Board.flipColor model.player}, Cmd.none
     | Error RemoteUnauthorizedException ->
         { model with error = Some "You have been logged out."; signedInAs = None }, Cmd.none
     | Error exn ->
@@ -160,7 +160,7 @@ let counterPage model dispatch =
         .Value(model.counter, fun v -> dispatch (SetCounter v))
         .Elt()
 
-open Program.Board
+open Othello.Board
 
 let whiteCell() = Main.White().Elt()
 let blackCell() = Main.Black().Elt()
@@ -170,7 +170,7 @@ let cell (x,y) model dispatch =
     match get (x,y) model.board with
     | Some White -> whiteCell()
     | Some Black -> blackCell()
-    | None when isValid (x,y) model.player model.board ->  
+    | None when Othello.Board.isMoveValid (x,y) model.player model.board ->  
                 Main.ValidMove()
                     .OnClick(fun args -> dispatch (MakeMove (x,y)))
                     .Elt()

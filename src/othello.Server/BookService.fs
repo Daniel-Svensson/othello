@@ -11,7 +11,7 @@ open Bolero.Remoting.Server
 open othello
 
 type BookService(ctx: IRemoteContext, env: IWebHostEnvironment) =
-    inherit RemoteHandler<Client.Main.BookService>()
+    inherit RemoteHandler<othello.Client.Books.BookService>()
     let serializerOptions = JsonSerializerOptions()
     do serializerOptions.Converters.Add(JsonFSharpConverter())
 
@@ -19,7 +19,7 @@ type BookService(ctx: IRemoteContext, env: IWebHostEnvironment) =
         let json =
             Path.Combine(env.ContentRootPath, "data/books.json")
             |> File.ReadAllText
-        JsonSerializer.Deserialize<Client.Main.Book[]>(json, serializerOptions)
+        JsonSerializer.Deserialize<othello.Client.Books.Book[]>(json, serializerOptions)
         |> ResizeArray
 
     override this.Handler =
